@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Credit Card Fraud Detection</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="top">
+    <h1>Credit Card Fraud Detection</h1>
+    <p>Move the threshold and watch the model's decisions, accuracy, recall and confusion matrix change.</p>
+  </header>
+
+  <main>
+    <!-- THRESHOLD CONTROL -->
+    <section class="panel control" aria-labelledby="thr-title">
+      <div class="control-head">
+        <label id="thr-title" for="threshold">Classification threshold</label>
+        <output id="threshold-value" for="threshold">0.50</output>
+      </div>
+      <input type="range" id="threshold" min="0" max="1" step="0.01" value="0.50">
+      <div class="scale"><span>0.00 &ndash; flags almost everything</span><span>1.00 &ndash; flags almost nothing</span></div>
+
+      <div class="presets" role="group" aria-label="Preset thresholds">
+        <span>Try:</span>
+        <button type="button" data-t="0.40">0.40</button>
+        <button type="button" data-t="0.50" class="active">0.50</button>
+        <button type="button" data-t="0.60">0.60</button>
+        <button type="button" data-t="0.70">0.70</button>
+      </div>
+
+      <p class="rule">A transaction is <strong class="bad">Fraud</strong> if fraud probability
+        &ge; <strong id="rule-t">0.50</strong>, otherwise <strong class="good">Legitimate</strong>.</p>
+    </section>
+
+    <div class="grid">
+      <!-- PREDICTION -->
+      <section class="panel" aria-labelledby="pred-title">
+        <h2 id="pred-title">Prediction for one transaction</h2>
+        <div class="sample-buttons">
+          <button type="button" id="btn-any">Random transaction</button>
+          <button type="button" id="btn-fraud">Random fraud case</button>
+          <button type="button" id="btn-legit">Random legitimate case</button>
+        </div>
+
+        <div id="verdict" class="verdict neutral" aria-live="polite">
+          <div class="verdict-label" id="verdict-label">Loading&hellip;</div>
+          <div class="verdict-sub" id="verdict-sub"></div>
+        </div>
+
+        <div class="prob-bar" aria-hidden="true">
+          <div class="prob-fill" id="prob-fill"></div>
+          <div class="prob-mark" id="prob-mark"></div>
+        </div>
+        <div class="prob-legend">
+          <span>Fraud probability: <strong id="prob-value">&ndash;</strong></span>
+          <span>Red marker = threshold</span>
+        </div>
+
+        <dl class="details">
+          <div><dt>Amount</dt><dd id="d-amount">&ndash;</dd></div>
+          <div><dt>Actual label</dt><dd id="d-actual">&ndash;</dd></div>
+          <div><dt>Model was</dt><dd id="d-correct">&ndash;</dd></div>
+        </dl>
+      </section>
+
+      <!-- METRICS -->
+      <section class="panel" aria-labelledby="met-title">
+        <h2 id="met-title">Performance on <span id="total">0</span> test transactions</h2>
+        <div class="metrics">
+          <div class="metric"><span class="m-name">Accuracy</span><span class="m-val" id="m-accuracy">&ndash;</span><span class="m-delta" id="dl-accuracy"></span></div>
+          <div class="metric key"><span class="m-name">Recall</span><span class="m-val" id="m-recall">&ndash;</span><span class="m-delta" id="dl-recall"></span></div>
+          <div class="metric"><span class="m-name">Precision</span><span class="m-val" id="m-precision">&ndash;</span><span class="m-delta" id="dl-precision"></span></div>
+          <div class="metric"><span class="m-name">F1-score</span><span class="m-val" id="m-f1">&ndash;</span><span class="m-delta" id="dl-f1"></span></div>
+        </div>
+        <p class="hint">Small arrows show the change since your previous threshold.</p>
+      </section>
+    </div>
+
+    <!-- CONFUSION MATRIX -->
+    <section class="panel" aria-labelledby="cm-title">
+      <h2 id="cm-title">Confusion matrix</h2>
+      <div class="table-wrap">
+        <table class="cm">
+          <thead>
+            <tr><th></th><th>Predicted Legitimate</th><th>Predicted Fraud</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th>Actual Legitimate</th>
+              <td class="ok"><span class="cm-tag">TN</span><span class="cm-num" id="tn">0</span><span class="cm-note">correctly allowed</span></td>
+              <td class="err"><span class="cm-tag">FP</span><span class="cm-num" id="fp">0</span><span class="cm-note">false alarm</span></td>
+            </tr>
+            <tr>
+              <th>Actual Fraud</th>
+              <td class="err"><span class="cm-tag">FN</span><span class="cm-num" id="fn">0</span><span class="cm-note">fraud missed</span></td>
+              <td class="ok"><span class="cm-tag">TP</span><span class="cm-num" id="tp">0</span><span class="cm-note">fraud caught</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="hint">Total actual fraud cases in test data: <strong id="total-fraud">0</strong></p>
+    </section>
+
+    <!-- GRAPH -->
+    <section class="panel" aria-labelledby="graph-title">
+      <h2 id="graph-title">Threshold vs recall, accuracy and precision</h2>
+      <div class="chart-box"><canvas id="chart" aria-label="Line chart of metrics against threshold" role="img"></canvas></div>
+      <p class="hint">The dashed vertical line is your current threshold. Notice how recall drops steadily as the threshold rises, while accuracy barely moves.</p>
+    </section>
+
+    <!-- EXPLANATION -->
+    <section class="panel explain" aria-labelledby="ex-title">
+      <h2 id="ex-title">What do these terms mean?</h2>
+      <dl>
+        <dt>Threshold</dt>
+        <dd>The probability value used to decide whether a transaction is fraud.</dd>
+        <dt>Recall</dt>
+        <dd>Measures how many actual fraudulent transactions were correctly detected. Recall = TP / (TP + FN).</dd>
+        <dt>Confusion matrix</dt>
+        <dd>Shows correct and incorrect predictions using TP, TN, FP and FN.</dd>
+        <dt>Trade-off</dt>
+        <dd>A lower threshold catches more fraud (higher recall) but raises false alarms (lower precision). A higher threshold does the opposite. Banks pick the balance that suits them.</dd>
+      </dl>
+    </section>
+  </main>
+
+  <footer>Model: Logistic Regression &middot; Data: <code>dataset/creditcard.csv</code> (20% held out for testing)</footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
